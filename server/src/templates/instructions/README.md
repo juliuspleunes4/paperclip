@@ -61,6 +61,15 @@ When creating a new agent with the Ollama adapter:
 3. The template path will be automatically populated
 4. Or select **"Custom path..."** to provide your own instructions file
 
+## Ollama Adapter Inheritance
+
+**Important**: When an agent using the Ollama adapter creates a new agent (hires), the child agent automatically inherits:
+- **Adapter type**: `ollama_local` (unless explicitly overridden)
+- **Ollama configuration**: baseUrl, temperature, preload settings, timeouts
+- This ensures all agents in your hierarchy use the same local AI infrastructure
+
+Example: If your CEO agent uses Ollama, all agents it hires will also use Ollama by default, creating a consistent local AI environment.
+
 ## Creating Custom Templates
 
 Templates are markdown files that define:

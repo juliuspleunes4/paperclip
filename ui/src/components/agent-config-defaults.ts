@@ -21,7 +21,7 @@ export const defaultCreateValues: CreateConfigValues = {
   maxTurnsPerRun: 80,
   heartbeatEnabled: false,
   intervalSec: 300,
-  baseUrl: "",
+  baseUrl: "http://localhost:11434",
   temperature: 0.7,
   maxTokens: 0,
   preload: true,

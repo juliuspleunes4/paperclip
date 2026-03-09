@@ -23,4 +23,9 @@ Operational fields:
 - timeoutSec (number, optional): run timeout in seconds (default: 600)
 - graceSec (number, optional): graceful shutdown period in seconds (default: 30)
 - preload (boolean, optional): preload model into memory before first request (default: true)
+
+Inheritance:
+- When an ollama_local agent creates a new agent, the child agent automatically inherits ollama_local as its adapter type (unless explicitly specified otherwise)
+- Ollama configuration (baseUrl, temperature, preload, etc.) is also inherited from the parent agent
+- This ensures consistent local AI infrastructure across your agent hierarchy
 `;

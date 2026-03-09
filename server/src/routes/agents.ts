@@ -45,6 +45,7 @@ export function agentRoutes(db: Db) {
     codex_local: "instructionsFilePath",
     opencode_local: "instructionsFilePath",
     cursor: "instructionsFilePath",
+    ollama_local: "instructionsFilePath",
   };
   const KNOWN_INSTRUCTIONS_PATH_KEYS = new Set(["instructionsFilePath", "agentsMdPath"]);
 
@@ -635,12 +636,35 @@ export function agentRoutes(db: Db) {
 
   router.post("/companies/:companyId/agent-hires", validate(createAgentHireSchema), async (req, res) => {
     const companyId = req.params.companyId as string;
-    await assertCanCreateAgentsForCompany(req, companyId);
+    const actorAgent = await assertCanCreateAgentsForCompany(req, companyId);
     const sourceIssueIds = parseSourceIssueIds(req.body);
     const { sourceIssueId: _sourceIssueId, sourceIssueIds: _sourceIssueIds, ...hireInput } = req.body;
+    
+    // Inherit Ollama adapter from parent agent if not explicitly specified
+    let effectiveHireInput = { ...hireInput };
+    if (actorAgent && actorAgent.adapterType === "ollama_local") {
+      // If no adapter type specified, inherit ollama_local
+      if (!effectiveHireInput.adapterType) {
+        effectiveHireInput.adapterType = "ollama_local";
+        
+        // Copy Ollama-specific config from parent if available
+        const parentConfig = (actorAgent.adapterConfig ?? {}) as Record<string, unknown>;
+        const childConfig = (effectiveHireInput.adapterConfig ?? {}) as Record<string, unknown>;
+        
+        effectiveHireInput.adapterConfig = {
+          baseUrl: childConfig.baseUrl ?? parentConfig.baseUrl ?? "http://localhost:11434",
+          temperature: childConfig.temperature ?? parentConfig.temperature ?? 0.7,
+          preload: childConfig.preload ?? parentConfig.preload ?? true,
+          timeoutSec: childConfig.timeoutSec ?? parentConfig.timeoutSec ?? 600,
+          graceSec: childConfig.graceSec ?? parentConfig.graceSec ?? 30,
+          ...childConfig, // Allow explicit overrides
+        };
+      }
+    }
+    
     const requestedAdapterConfig = applyCreateDefaultsByAdapterType(
-      hireInput.adapterType,
-      ((hireInput.adapterConfig ?? {}) as Record<string, unknown>),
+      effectiveHireInput.adapterType,
+      ((effectiveHireInput.adapterConfig ?? {}) as Record<string, unknown>),
     );
     const normalizedAdapterConfig = await secretsSvc.normalizeAdapterConfigForPersistence(
       companyId,
@@ -649,11 +673,11 @@ export function agentRoutes(db: Db) {
     );
     await assertAdapterConfigConstraints(
       companyId,
-      hireInput.adapterType,
+      effectiveHireInput.adapterType,
       normalizedAdapterConfig,
     );
     const normalizedHireInput = {
-      ...hireInput,
+      ...effectiveHireInput,
       adapterConfig: normalizedAdapterConfig,
     };
 
