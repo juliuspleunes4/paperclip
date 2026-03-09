@@ -51,11 +51,13 @@ export const help: Record<string, string> = {
 };
 
 export const adapterLabels: Record<string, string> = {
+  ollama_local: "Ollama (local)",
   claude_local: "Claude (local)",
   codex_local: "Codex (local)",
   opencode_local: "OpenCode (local)",
   openclaw_gateway: "OpenClaw Gateway",
   cursor: "Cursor (local)",
+  pi_local: "Pi (local)",
   process: "Process",
   http: "HTTP",
 };

@@ -1,4 +1,5 @@
 import type { UIAdapterModule } from "./types";
+import { ollamaLocalUIAdapter } from "./ollama-local";
 import { claudeLocalUIAdapter } from "./claude-local";
 import { codexLocalUIAdapter } from "./codex-local";
 import { cursorLocalUIAdapter } from "./cursor";
@@ -10,6 +11,7 @@ import { httpUIAdapter } from "./http";
 
 const adaptersByType = new Map<string, UIAdapterModule>(
   [
+    ollamaLocalUIAdapter,
     claudeLocalUIAdapter,
     codexLocalUIAdapter,
     openCodeLocalUIAdapter,

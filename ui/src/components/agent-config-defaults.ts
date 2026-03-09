@@ -1,7 +1,7 @@
 import type { CreateConfigValues } from "@paperclipai/adapter-utils";
 
 export const defaultCreateValues: CreateConfigValues = {
-  adapterType: "claude_local",
+  adapterType: "ollama_local",
   cwd: "",
   instructionsFilePath: "",
   promptTemplate: "",
@@ -21,4 +21,10 @@ export const defaultCreateValues: CreateConfigValues = {
   maxTurnsPerRun: 80,
   heartbeatEnabled: false,
   intervalSec: 300,
+  baseUrl: "",
+  temperature: 0.7,
+  maxTokens: 0,
+  preload: true,
+  timeoutSec: 600,
+  graceSec: 30,
 };

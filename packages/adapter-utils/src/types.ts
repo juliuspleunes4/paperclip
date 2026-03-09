@@ -211,4 +211,11 @@ export interface CreateConfigValues {
   maxTurnsPerRun: number;
   heartbeatEnabled: boolean;
   intervalSec: number;
+  // Ollama-specific
+  baseUrl?: string;
+  temperature?: number;
+  maxTokens?: number;
+  preload?: boolean;
+  timeoutSec?: number;
+  graceSec?: number;
 }

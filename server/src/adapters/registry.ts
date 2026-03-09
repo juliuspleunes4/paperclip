@@ -1,5 +1,12 @@
 import type { ServerAdapterModule } from "./types.js";
 import {
+  execute as ollamaExecute,
+  testEnvironment as ollamaTestEnvironment,
+  sessionCodec as ollamaSessionCodec,
+  listOllamaModels,
+} from "@paperclipai/adapter-ollama-local/server";
+import { agentConfigurationDoc as ollamaAgentConfigurationDoc, models as ollamaModels } from "@paperclipai/adapter-ollama-local";
+import {
   execute as claudeExecute,
   testEnvironment as claudeTestEnvironment,
   sessionCodec as claudeSessionCodec,
@@ -47,6 +54,24 @@ import {
 } from "@paperclipai/adapter-pi-local";
 import { processAdapter } from "./process/index.js";
 import { httpAdapter } from "./http/index.js";
+
+const ollamaLocalAdapter: ServerAdapterModule = {
+  type: "ollama_local",
+  execute: ollamaExecute,
+  testEnvironment: ollamaTestEnvironment,
+  sessionCodec: ollamaSessionCodec,
+  models: ollamaModels,
+  listModels: async () => {
+    try {
+      const models = await listOllamaModels();
+      return models.map((m: { name: string; size: number }) => ({ id: m.name, label: m.name }));
+    } catch {
+      return [];
+    }
+  },
+  supportsLocalAgentJwt: true,
+  agentConfigurationDoc: ollamaAgentConfigurationDoc,
+};
 
 const claudeLocalAdapter: ServerAdapterModule = {
   type: "claude_local",
@@ -113,6 +138,7 @@ const piLocalAdapter: ServerAdapterModule = {
 
 const adaptersByType = new Map<string, ServerAdapterModule>(
   [
+    ollamaLocalAdapter,
     claudeLocalAdapter,
     codexLocalAdapter,
     openCodeLocalAdapter,
