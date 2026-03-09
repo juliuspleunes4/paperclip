@@ -90,6 +90,36 @@ async function resolvePaperclipSkillsDir(): Promise<string | null> {
   return null;
 }
 
+async function symlinkOrCopy(source: string, target: string): Promise<void> {
+  try {
+    await fs.symlink(source, target, "junction");
+  } catch (err) {
+    // On Windows, symlinks require admin privileges or Developer Mode.
+    // Fall back to copying the directory if symlinking fails.
+    if (err instanceof Error && "code" in err && err.code === "EPERM" && process.platform === "win32") {
+      await copyDirectory(source, target);
+    } else {
+      throw err;
+    }
+  }
+}
+
+async function copyDirectory(source: string, target: string): Promise<void> {
+  await fs.mkdir(target, { recursive: true });
+  const entries = await fs.readdir(source, { withFileTypes: true });
+  
+  for (const entry of entries) {
+    const sourcePath = path.join(source, entry.name);
+    const targetPath = path.join(target, entry.name);
+    
+    if (entry.isDirectory()) {
+      await copyDirectory(sourcePath, targetPath);
+    } else {
+      await fs.copyFile(sourcePath, targetPath);
+    }
+  }
+}
+
 type EnsureCursorSkillsInjectedOptions = {
   skillsDir?: string | null;
   skillsHome?: string;
@@ -125,7 +155,7 @@ export async function ensureCursorSkillsInjected(
     return;
   }
 
-  const linkSkill = options.linkSkill ?? ((source: string, target: string) => fs.symlink(source, target));
+  const linkSkill = options.linkSkill ?? symlinkOrCopy;
   for (const entry of entries) {
     if (!entry.isDirectory()) continue;
     const source = path.join(skillsDir, entry.name);

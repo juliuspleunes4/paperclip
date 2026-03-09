@@ -1,5 +1,6 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { constants as fsConstants, promises as fs } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 
 export interface RunProcessResult {
@@ -126,9 +127,29 @@ export function defaultPathForPlatform() {
 }
 
 export function ensurePathInEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
-  if (typeof env.PATH === "string" && env.PATH.length > 0) return env;
-  if (typeof env.Path === "string" && env.Path.length > 0) return env;
-  return { ...env, PATH: defaultPathForPlatform() };
+  const currentPath = env.PATH ?? env.Path ?? "";
+  const hasPath = currentPath.length > 0;
+  const basePath = hasPath ? currentPath : defaultPathForPlatform();
+  
+  // Add npm global bin directory if not already in PATH
+  const delimiter = process.platform === "win32" ? ";" : ":";
+  const npmBinDir = process.platform === "win32"
+    ? path.join(os.homedir(), "AppData", "Roaming", "npm")
+    : path.join(os.homedir(), ".npm-global", "bin");
+  
+  const pathParts = basePath.split(delimiter);
+  const normalizedPaths = pathParts.map(p => p.toLowerCase());
+  const normalizedNpmBin = npmBinDir.toLowerCase();
+  
+  // Only add npm bin if it's not already in PATH
+  if (!normalizedPaths.includes(normalizedNpmBin)) {
+    const enhancedPath = process.platform === "win32"
+      ? `${basePath}${delimiter}${npmBinDir}`
+      : `${npmBinDir}${delimiter}${basePath}`;
+    return { ...env, PATH: enhancedPath };
+  }
+  
+  return hasPath ? env : { ...env, PATH: basePath };
 }
 
 export async function ensureAbsoluteDirectory(
@@ -184,7 +205,7 @@ export async function ensureCommandResolvable(command: string, cwd: string, env:
   const delimiter = process.platform === "win32" ? ";" : ":";
   const dirs = pathValue.split(delimiter).filter(Boolean);
   const windowsExt = process.platform === "win32"
-    ? (env.PATHEXT ?? ".EXE;.CMD;.BAT;.COM").split(";")
+    ? (env.PATHEXT ?? ".EXE;.CMD;.BAT;.COM;.PS1").split(";")
     : [""];
 
   for (const dir of dirs) {
@@ -220,10 +241,12 @@ export async function runChildProcess(
 
   return new Promise<RunProcessResult>((resolve, reject) => {
     const mergedEnv = ensurePathInEnv({ ...process.env, ...opts.env });
+    // On Windows, use shell to support .ps1, .cmd, and .bat scripts
+    const useShell = process.platform === "win32";
     const child = spawn(command, args, {
       cwd: opts.cwd,
       env: mergedEnv,
-      shell: false,
+      shell: useShell,
       stdio: [opts.stdin != null ? "pipe" : "ignore", "pipe", "pipe"],
     }) as ChildProcessWithEvents;
 

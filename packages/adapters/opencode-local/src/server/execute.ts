@@ -53,6 +53,36 @@ async function resolvePaperclipSkillsDir(): Promise<string | null> {
   return null;
 }
 
+async function symlinkOrCopy(source: string, target: string): Promise<void> {
+  try {
+    await fs.symlink(source, target, "junction");
+  } catch (err) {
+    // On Windows, symlinks require admin privileges or Developer Mode.
+    // Fall back to copying the directory if symlinking fails.
+    if (err instanceof Error && "code" in err && err.code === "EPERM" && process.platform === "win32") {
+      await copyDirectory(source, target);
+    } else {
+      throw err;
+    }
+  }
+}
+
+async function copyDirectory(source: string, target: string): Promise<void> {
+  await fs.mkdir(target, { recursive: true });
+  const entries = await fs.readdir(source, { withFileTypes: true });
+  
+  for (const entry of entries) {
+    const sourcePath = path.join(source, entry.name);
+    const targetPath = path.join(target, entry.name);
+    
+    if (entry.isDirectory()) {
+      await copyDirectory(sourcePath, targetPath);
+    } else {
+      await fs.copyFile(sourcePath, targetPath);
+    }
+  }
+}
+
 async function ensureOpenCodeSkillsInjected(onLog: AdapterExecutionContext["onLog"]) {
   const skillsDir = await resolvePaperclipSkillsDir();
   if (!skillsDir) return;
@@ -68,7 +98,7 @@ async function ensureOpenCodeSkillsInjected(onLog: AdapterExecutionContext["onLo
     if (existing) continue;
 
     try {
-      await fs.symlink(source, target);
+      await symlinkOrCopy(source, target);
       await onLog(
         "stderr",
         `[paperclip] Injected OpenCode skill "${entry.name}" into ${skillsHome}\n`,
