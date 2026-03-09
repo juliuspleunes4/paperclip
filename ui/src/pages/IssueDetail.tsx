@@ -40,7 +40,9 @@ import {
   MessageSquare,
   MoreHorizontal,
   Paperclip,
+  PlayCircle,
   SlidersHorizontal,
+  Square,
   Trash2,
 } from "lucide-react";
 import type { ActivityEvent } from "@paperclipai/shared";
@@ -158,6 +160,8 @@ export function IssueDetail() {
     cost: false,
   });
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const lastMarkedReadIssueIdRef = useRef<string | null>(null);
 
@@ -465,6 +469,32 @@ export function IssueDetail() {
     },
   });
 
+  const checkoutIssue = useMutation({
+    mutationFn: (agentId: string) => issuesApi.checkout(issueId!, agentId),
+    onSuccess: () => {
+      setCheckoutError(null);
+      invalidateIssue();
+    },
+    onError: (err) => {
+      const message = err instanceof Error ? err.message : "Failed to checkout issue";
+      setCheckoutError(message);
+      console.error("Checkout error:", err);
+    },
+  });
+
+  const releaseIssue = useMutation({
+    mutationFn: () => issuesApi.release(issueId!),
+    onSuccess: () => {
+      setCheckoutError(null);
+      invalidateIssue();
+    },
+    onError: (err) => {
+      const message = err instanceof Error ? err.message : "Failed to release issue";
+      setCheckoutError(message);
+      console.error("Release error:", err);
+    },
+  });
+
   useEffect(() => {
     const titleLabel = issue?.title ?? issueId ?? "Issue";
     setBreadcrumbs([
@@ -543,6 +573,13 @@ export function IssueDetail() {
         </div>
       )}
 
+      {checkoutError && (
+        <div className="flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <span className="shrink-0">⚠️</span>
+          {checkoutError}
+        </div>
+      )}
+
       <div className="space-y-3">
         <div className="flex items-center gap-2 min-w-0 flex-wrap">
           <StatusIcon
@@ -611,7 +648,139 @@ export function IssueDetail() {
             <SlidersHorizontal className="h-4 w-4" />
           </Button>
 
-          <div className="hidden md:flex items-center md:ml-auto shrink-0">
+          {/* Checkout / Release button (mobile) */}
+          {((issue.status === "todo" || issue.status === "backlog" || issue.status === "blocked") ||
+            (issue.status === "in_progress" && !hasLiveRuns)) &&
+            (issue.assigneeAgentId ? (
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                className="md:hidden shrink-0"
+                onClick={() => releaseIssue.mutate()}
+                disabled={releaseIssue.isPending}
+                title="Release this issue"
+              >
+                <Square className="h-4 w-4" />
+              </Button>
+            ) : (
+              <Popover open={checkoutOpen} onOpenChange={setCheckoutOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    className="md:hidden shrink-0"
+                    onClick={() => {
+                      console.log("Start Work (mobile) clicked", {
+                        issueStatus: issue.status,
+                        hasLiveRuns,
+                        agentsCount: agents?.length,
+                        checkoutOpen,
+                      });
+                      setCheckoutOpen(true);
+                    }}
+                    title="Assign to an agent and start work"
+                  >
+                    <PlayCircle className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-56 p-1" align="end">
+                  <div className="p-1">
+                    <p className="text-xs text-muted-foreground mb-2 px-2">Select agent to assign:</p>
+                    <ScrollArea className="max-h-[300px]">
+                      {(agents ?? [])
+                        .filter((agent) => agent.status !== "terminated")
+                        .sort((a, b) => a.name.localeCompare(b.name))
+                        .map((agent) => (
+                          <button
+                            key={agent.id}
+                            className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded hover:bg-accent/50 text-left"
+                            onClick={() => {
+                              console.log("Agent selected (mobile):", agent.name, agent.id);
+                              checkoutIssue.mutate(agent.id);
+                              setCheckoutOpen(false);
+                            }}
+                            disabled={checkoutIssue.isPending}
+                          >
+                            <Identity name={agent.name} size="sm" />
+                          </button>
+                        ))}
+                      {(agents ?? []).filter((a) => a.status !== "terminated").length === 0 && (
+                        <p className="text-xs text-muted-foreground px-2 py-1.5">No active agents</p>
+                      )}
+                    </ScrollArea>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            ))}
+
+          <div className="hidden md:flex items-center md:ml-auto shrink-0 gap-1">
+            {/* Checkout / Release button */}
+            {((issue.status === "todo" || issue.status === "backlog" || issue.status === "blocked") ||
+              (issue.status === "in_progress" && !hasLiveRuns)) &&
+              (issue.assigneeAgentId ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="shrink-0 text-xs h-7"
+                  onClick={() => releaseIssue.mutate()}
+                  disabled={releaseIssue.isPending}
+                  title="Release this issue"
+                >
+                  <Square className="h-3.5 w-3.5 mr-1" />
+                  Release
+                </Button>
+              ) : (
+                <Popover open={checkoutOpen} onOpenChange={setCheckoutOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="shrink-0 text-xs h-7"
+                      onClick={() => {
+                        console.log("Start Work clicked", {
+                          issueStatus: issue.status,
+                          hasLiveRuns,
+                          agentsCount: agents?.length,
+                          checkoutOpen,
+                        });
+                        setCheckoutOpen(true);
+                      }}
+                      title="Assign to an agent and start work"
+                    >
+                      <PlayCircle className="h-3.5 w-3.5 mr-1" />
+                      Start Work
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-56 p-1" align="end">
+                    <div className="p-1">
+                      <p className="text-xs text-muted-foreground mb-2 px-2">Select agent to assign:</p>
+                      <ScrollArea className="max-h-[300px]">
+                        {(agents ?? [])
+                          .filter((agent) => agent.status !== "terminated")
+                          .sort((a, b) => a.name.localeCompare(b.name))
+                          .map((agent) => (
+                            <button
+                              key={agent.id}
+                              className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded hover:bg-accent/50 text-left"
+                              onClick={() => {
+                                console.log("Agent selected:", agent.name, agent.id);
+                                checkoutIssue.mutate(agent.id);
+                                setCheckoutOpen(false);
+                              }}
+                              disabled={checkoutIssue.isPending}
+                            >
+                              <Identity name={agent.name} size="sm" />
+                            </button>
+                          ))}
+                        {(agents ?? []).filter((a) => a.status !== "terminated").length === 0 && (
+                          <p className="text-xs text-muted-foreground px-2 py-1.5">No active agents</p>
+                        )}
+                      </ScrollArea>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              ))}
+
             <Button
               variant="ghost"
               size="icon-xs"

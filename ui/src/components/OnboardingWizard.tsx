@@ -49,6 +49,7 @@ import {
 
 type Step = 1 | 2 | 3 | 4;
 type AdapterType =
+  | "ollama_local"
   | "claude_local"
   | "codex_local"
   | "opencode_local"
@@ -85,7 +86,7 @@ export function OnboardingWizard() {
 
   // Step 2
   const [agentName, setAgentName] = useState("CEO");
-  const [adapterType, setAdapterType] = useState<AdapterType>("claude_local");
+  const [adapterType, setAdapterType] = useState<AdapterType>("ollama_local");
   const [cwd, setCwd] = useState("");
   const [model, setModel] = useState("");
   const [command, setCommand] = useState("");
@@ -165,7 +166,7 @@ export function OnboardingWizard() {
     enabled: Boolean(createdCompanyId) && onboardingOpen && step === 2
   });
   const isLocalAdapter =
-    adapterType === "claude_local" || adapterType === "codex_local" || adapterType === "opencode_local" || adapterType === "cursor";
+    adapterType === "ollama_local" || adapterType === "claude_local" || adapterType === "codex_local" || adapterType === "opencode_local" || adapterType === "cursor";
   const effectiveAdapterCommand =
     command.trim() ||
     (adapterType === "codex_local"
@@ -235,7 +236,7 @@ export function OnboardingWizard() {
     setCompanyName("");
     setCompanyGoal("");
     setAgentName("CEO");
-    setAdapterType("claude_local");
+    setAdapterType("ollama_local");
     setCwd("");
     setModel("");
     setCommand("");
@@ -646,6 +647,13 @@ export function OnboardingWizard() {
                     <div className="grid grid-cols-2 gap-2">
                       {[
                         {
+                          value: "ollama_local" as const,
+                          label: "Ollama",
+                          icon: Bot,
+                          desc: "Local Ollama agent",
+                          recommended: true
+                        },
+                        {
                           value: "claude_local" as const,
                           label: "Claude Code",
                           icon: Sparkles,
@@ -734,7 +742,8 @@ export function OnboardingWizard() {
                   </div>
 
                   {/* Conditional adapter fields */}
-                  {(adapterType === "claude_local" ||
+                  {(adapterType === "ollama_local" ||
+                    adapterType === "claude_local" ||
                     adapterType === "codex_local" ||
                     adapterType === "opencode_local" ||
                     adapterType === "pi_local" ||

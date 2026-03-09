@@ -37,10 +37,10 @@ export const issuesApi = {
     api.post<Issue>(`/companies/${companyId}/issues`, data),
   update: (id: string, data: Record<string, unknown>) => api.patch<Issue>(`/issues/${id}`, data),
   remove: (id: string) => api.delete<Issue>(`/issues/${id}`),
-  checkout: (id: string, agentId: string) =>
+  checkout: (id: string, agentId: string, expectedStatuses?: string[]) =>
     api.post<Issue>(`/issues/${id}/checkout`, {
       agentId,
-      expectedStatuses: ["todo", "backlog", "blocked"],
+      expectedStatuses: expectedStatuses ?? ["todo", "backlog", "blocked", "in_progress"],
     }),
   release: (id: string) => api.post<Issue>(`/issues/${id}/release`, {}),
   listComments: (id: string) => api.get<IssueComment[]>(`/issues/${id}/comments`),
